@@ -1,2 +1,7 @@
 streamlit
 streamlit-folium
+sodapy
+openmeteo_requests
+requests_cache
+retry_requests
+plotly

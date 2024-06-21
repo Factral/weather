@@ -1,8 +1,18 @@
 import folium as fl
 from streamlit_folium import st_folium
 import streamlit as st
+import requests
+import pandas as pd
 
-st.set_page_config(page_title="Weather Project")
+
+def load_data(file_path):
+    return pd.read_csv(file_path)
+
+dataframe_om = load_data('hourly_weather_data.csv')
+dataframe_ideam = load_data('results_df.csv')
+
+st.write(dataframe_om)
+st.write(dataframe_ideam)
 
 hide_default_format = """
        <style>
@@ -12,7 +22,7 @@ hide_default_format = """
        """
 st.markdown(hide_default_format, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align: center; color: grey;'>Weather project</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #f24141;'>Weather project</h1>", unsafe_allow_html=True)
 
 def get_pos(lat,lng):
     return lat,lng
