@@ -10,12 +10,12 @@ def fetch_om_data(latitude, longitude, freq):
 
     url = "https://archive-api.open-meteo.com/v1/archive"
 
-
-    value_param = "temperature_2m" if freq == "hourly" else "temperature_2m_mean"
+    value_param =  ["temperature_2m", "relative_humidity_2m", "rain", "direct_radiation"]
+   
     params = {
         "latitude": latitude,
         "longitude": longitude,
-        freq: value_param,
+        "hourly": value_param,
         "start_date": "2020-06-16",
         "end_date": "2024-06-30",
         "timezone": "America/Chicago"
@@ -28,25 +28,41 @@ def fetch_om_data(latitude, longitude, freq):
         response = responses[0]
 
         # Process hourly data. The order of variables needs to be the same as requested.
-        if freq == "daily":
-            hourly = response.Daily()
-        elif freq == "hourly":
-            hourly = response.Hourly()
+
+        data = response.Hourly()
 
 
+        data_temperature_2m = data.Variables(0).ValuesAsNumpy()
+        data_relative_humidity_2m = data.Variables(1).ValuesAsNumpy()
+        data_rain = data.Variables(2).ValuesAsNumpy()
+        data_direct_radiation = data.Variables(3).ValuesAsNumpy()
 
-        hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
-        hourly_data = {"date": pd.date_range(
-            start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
-            end = pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
-            freq = pd.Timedelta(seconds = hourly.Interval()),
+        data = {"date": pd.date_range(
+            start = pd.to_datetime(data.Time(), unit = "s", utc = True),
+            end = pd.to_datetime(data.TimeEnd(), unit = "s", utc = True),
+            freq = pd.Timedelta(seconds = data.Interval()),
             inclusive = "left"
         )}
-        hourly_data["temperature_2m"] = hourly_temperature_2m
 
-        hourly_dataframe = pd.DataFrame(data = hourly_data)
+        data["temperature_2m"] = data_temperature_2m
+        data["relative_humidity_2m"] = data_relative_humidity_2m
+        data["rain"] = data_rain
+        data["direct_radiation"] = data_direct_radiation
 
-        return hourly_dataframe
+        dataframe = pd.DataFrame(data = data)
+
+        if freq == "daily":
+            # Take the average of the 24 hours to get daily averages
+            daily_dataframe = dataframe.resample('D', on='date').mean().reset_index()
+            return daily_dataframe
+        elif freq == "monthly":
+            # First, resample to daily averages
+            daily_dataframe = dataframe.resample('D', on='date').mean().reset_index()
+            # Then, resample the daily averages to get monthly averages
+            monthly_dataframe = daily_dataframe.resample('M', on='date').mean().reset_index()
+            return monthly_dataframe
+        else:
+            return dataframe
     
     except Exception as e:
         print(f"Failed to fetch data from OpenMeteo: {e}")
